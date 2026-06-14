@@ -1,0 +1,82 @@
+[
+  {
+    "id": "demo-source-001",
+    "title": "Net-Zero Industry Act (NZIA) — Overview and Key Provisions",
+    "publisher": "European Commission",
+    "url": "https://single-market-economy.ec.europa.eu/industry/sustainability/net-zero-industry-act_en",
+    "publishedAt": "2024-05-27",
+    "summary": "The NZIA sets a benchmark for EU manufacturing capacity in strategic net-zero technologies, requiring at least 40% of the EU's clean technology deployment needs to be met by domestic manufacturing by 2030. The act simplifies permitting, promotes innovation, and links public financial support to local production requirements, creating implicit localization pressure for foreign investors.",
+    "addedBy": "system",
+    "createdAt": "2026-06-15T00:00:00.000Z"
+  },
+  {
+    "id": "demo-source-002",
+    "title": "Critical Raw Materials Act (CRMA) — Securing Strategic Mineral Supply Chains",
+    "publisher": "European Commission",
+    "url": "https://single-market-economy.ec.europa.eu/sectors/raw-materials/areas-specific-interest/critical-raw-materials/critical-raw-materials-act_en",
+    "publishedAt": "2024-04-23",
+    "summary": "The CRMA sets targets for EU domestic extraction, processing, and recycling of strategic raw materials, aiming to reduce strategic dependencies on dominant suppliers—particularly China. The act mandates that by 2030 no more than 65% of the EU's annual consumption of any strategic raw material should come from a single third country. Chinese battery and EV companies face increased scrutiny in accessing critical minerals and processing capacity within the EU.",
+    "addedBy": "system",
+    "createdAt": "2026-06-15T00:00:00.000Z"
+  },
+  {
+    "id": "demo-source-003",
+    "title": "Foreign Subsidies Regulation (FSR) — New Scrutiny Tools for Non-EU Investment",
+    "publisher": "European Commission",
+    "url": "https://competition-policy.ec.europa.eu/state-aid/foreign-subsidies-regulation_en",
+    "publishedAt": "2023-07-12",
+    "summary": "The FSR empowers the European Commission to investigate financial contributions from non-EU governments that distort the internal market. It introduces three tools: ex-ante notification for large M&A transactions with foreign subsidies, ex-ante notification for large public procurement bids involving foreign subsidies, and a general ex-officio investigative tool. Chinese state-backed enterprises are particularly affected, as many receive subsidized financing, land, and raw materials from the Chinese government.",
+    "addedBy": "system",
+    "createdAt": "2026-06-15T00:00:00.000Z"
+  },
+  {
+    "id": "demo-source-004",
+    "title": "European Chips Act — Boosting Semiconductor Sovereignty",
+    "publisher": "European Commission",
+    "url": "https://commission.europa.eu/strategy-and-policy/priorities-2019-2024/europe-fit-digital-age/european-chips-act_en",
+    "publishedAt": "2023-09-13",
+    "summary": "The European Chips Act mobilizes €43 billion in public and private investment to strengthen the EU's semiconductor ecosystem, reduce dependency on Asian chipmakers, and build advanced manufacturing capacity in Europe. While the act is primarily about EU industrial resilience, Chinese semiconductor firms face indirect exclusion through foreign investment screening mechanisms and technology transfer restrictions tied to EU-funded projects.",
+    "addedBy": "system",
+    "createdAt": "2026-06-15T00:00:00.000Z"
+  },
+  {
+    "id": "demo-source-005",
+    "title": "CATL's Debrecen Battery Plant — Navigating Localization Requirements in Hungary",
+    "publisher": "Financial Times",
+    "url": "https://www.ft.com/content/catl-hungary-battery-plant",
+    "publishedAt": "2024-09-18",
+    "summary": "CATL's €7.3 billion battery manufacturing plant in Debrecen, Hungary, exemplifies the opportunities and challenges facing Chinese companies in Europe. The facility, which will supply BMW and Mercedes-Benz, must comply with EU battery regulations requiring carbon footprint declarations, recycled content minimums, and supply chain due diligence. Local content requirements and environmental permitting delays slowed construction by over six months, reflecting regulatory friction despite Hungary's generally welcoming stance toward Chinese investment.",
+    "addedBy": "system",
+    "createdAt": "2026-06-15T00:00:00.000Z"
+  },
+  {
+    "id": "demo-source-006",
+    "title": "BYD's First European EV Factory — Strategic Entry Amid Tariff Uncertainty",
+    "publisher": "Reuters",
+    "url": "https://www.reuters.com/business/autos-transportation/byd-build-first-european-ev-plant-hungary-2024-01-30/",
+    "publishedAt": "2024-01-30",
+    "summary": "BYD announced its first European passenger EV manufacturing plant in Szeged, Hungary, with an annual capacity of 200,000 vehicles. The investment is widely seen as a response to EU tariff increases on Chinese-made EVs—from 10% to up to 48% for individual manufacturers. By producing locally, BYD mitigates tariff exposure while accessing EU single-market benefits. The factory is expected to create thousands of local jobs and receive Hungarian government incentives, though it remains subject to ongoing FSR scrutiny.",
+    "addedBy": "system",
+    "createdAt": "2026-06-15T00:00:00.000Z"
+  },
+  {
+    "id": "demo-source-007",
+    "title": "EU Anti-Subsidy Investigation on Chinese Electric Vehicles — Tariff Escalation",
+    "publisher": "European Commission",
+    "url": "https://ec.europa.eu/commission/presscorner/detail/en/ip_24_2379",
+    "publishedAt": "2024-10-04",
+    "summary": "The European Commission concluded its anti-subsidy investigation into Chinese EV imports, imposing countervailing duties of 17% to 36% on individual Chinese automakers (BYD 17%, Geely 20%, SAIC 36%) on top of the standard 10% import tariff. The investigation found evidence of state subsidies including preferential financing, below-market land and raw materials, and export incentives. The measures are designed to level the playing field for European manufacturers while the EU accelerates its domestic EV supply chain under the NZIA framework.",
+    "addedBy": "system",
+    "createdAt": "2026-06-15T00:00:00.000Z"
+  },
+  {
+    "id": "demo-source-008",
+    "title": "SAIC/MG in Europe — Market Access Challenges Under the FSR and Anti-Subsidy Regime",
+    "publisher": "European Federation for Transport and Environment",
+    "url": "https://www.transportenvironment.org/discover/saic-mg-europe-subsidies/",
+    "publishedAt": "2024-11-12",
+    "summary": "SAIC Motor, owner of the MG brand, faces the highest anti-subsidy duty at 36% among Chinese automakers. MG had become the best-selling Chinese car brand in Europe with over 230,000 units sold in 2023, but the new tariff structure threatens its price competitiveness. SAIC has announced plans to build a European factory—potentially in Spain or Germany—but faces additional FSR scrutiny because the company is majority-owned by Shanghai state-owned assets. The case illustrates how trade measures and investment screening are jointly reshaping Chinese market entry strategies in Europe.",
+    "addedBy": "system",
+    "createdAt": "2026-06-15T00:00:00.000Z"
+  }
+]
