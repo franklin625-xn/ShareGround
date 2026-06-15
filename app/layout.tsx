@@ -4,13 +4,14 @@ import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
   title: "SharedGround",
-  description: "A shared research workspace for humans and AI agents.",
+  description:
+    "A shared research workspace where humans and AI agents collaborate on complex research tasks through structured actions, explicit control handoffs, and auditable evidence chains.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="min-h-screen">{children}</body>
     </html>
   );
 }

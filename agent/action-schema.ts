@@ -20,9 +20,30 @@ export const workspaceActionSchema = z.discriminatedUnion("type", [
     reason: reasonSchema,
   }),
   z.object({
+    type: z.literal("EDIT_SOURCE"),
+    payload: z.object({
+      sourceId: z.string().min(1),
+      title: z.string().min(1),
+      publisher: z.string().min(1),
+      url: z.string().url().optional(),
+      publishedAt: z.string().optional(),
+      summary: z.string().min(1),
+    }),
+    reason: reasonSchema,
+  }),
+  z.object({
     type: z.literal("ADD_EVIDENCE"),
     payload: z.object({
       sourceId: z.string().min(1),
+      quoteOrFinding: z.string().min(1),
+      relevance: z.string().min(1),
+    }),
+    reason: reasonSchema,
+  }),
+  z.object({
+    type: z.literal("EDIT_EVIDENCE"),
+    payload: z.object({
+      evidenceId: z.string().min(1),
       quoteOrFinding: z.string().min(1),
       relevance: z.string().min(1),
     }),
@@ -130,7 +151,18 @@ export const workspaceActionSchema = z.discriminatedUnion("type", [
 export const agentTurnSchema = z.object({
   situation: z.string(),
   nextGoal: z.string(),
-  actions: z.array(workspaceActionSchema).max(3),
+  actions: z
+    .array(
+      workspaceActionSchema.refine(
+        (action) =>
+          action.type !== "ANSWER_HUMAN_INPUT" && action.type !== "FINISH",
+        {
+          message:
+            "Agent turns cannot include human-only ANSWER_HUMAN_INPUT or FINISH actions.",
+        },
+      ),
+    )
+    .max(3),
   stopReason: z.enum([
     "turn_complete",
     "waiting_for_human",
@@ -140,4 +172,8 @@ export const agentTurnSchema = z.object({
 });
 
 export type WorkspaceAction = z.infer<typeof workspaceActionSchema>;
+export type AgentAction = Exclude<
+  WorkspaceAction,
+  { type: "ANSWER_HUMAN_INPUT" } | { type: "FINISH" }
+>;
 export type AgentTurn = z.infer<typeof agentTurnSchema>;

@@ -12,19 +12,69 @@ import type {
   WorkspaceState,
 } from "@/core/types";
 
-let objectCounter = 0;
-
-function createId(prefix: string) {
-  objectCounter += 1;
-  return `${prefix}-${objectCounter.toString().padStart(4, "0")}`;
+export function resetObjectCounterForTests() {
+  // Kept for backward compatibility — object IDs now derive from state.
+  // No-op in the new state-based scheme.
 }
 
 function now() {
   return new Date().toISOString();
 }
 
-export function resetObjectCounterForTests() {
-  objectCounter = 0;
+/**
+ * Generate the next sequential object ID for a given prefix by scanning
+ * all existing object arrays in the state. This guarantees deterministic
+ * IDs across server-side agent execution and client-side human actions
+ * after localStorage hydration.
+ */
+function createId(prefix: string, state: WorkspaceState): string {
+  const allIds = [
+    ...state.sources.map((s) => s.id),
+    ...state.evidence.map((e) => e.id),
+    ...state.notes.map((n) => n.id),
+    ...state.claims.map((c) => c.id),
+    ...(state.pendingHumanRequest ? [state.pendingHumanRequest.id] : []),
+  ];
+
+  const prefixPattern = new RegExp(`^${prefix}-(\\d+)$`);
+  let maxCounter = 0;
+
+  for (const id of allIds) {
+    const match = id.match(prefixPattern);
+    if (match) {
+      const num = parseInt(match[1]!, 10);
+      if (num > maxCounter) maxCounter = num;
+    }
+  }
+
+  return `${prefix}-${(maxCounter + 1).toString().padStart(4, "0")}`;
+}
+
+function hasSource(state: WorkspaceState, sourceId: string): boolean {
+  return state.sources.some((source) => source.id === sourceId);
+}
+
+function hasEvidence(state: WorkspaceState, evidenceId: string): boolean {
+  return state.evidence.some((evidence) => evidence.id === evidenceId);
+}
+
+function findMissingId(
+  ids: string[] | undefined,
+  exists: (id: string) => boolean,
+): string | undefined {
+  return ids?.find((id) => !exists(id));
+}
+
+function hasWorkspaceObject(state: WorkspaceState, objectId: string): boolean {
+  return (
+    state.task.id === objectId ||
+    objectId === "brief" ||
+    hasSource(state, objectId) ||
+    hasEvidence(state, objectId) ||
+    state.notes.some((note) => note.id === objectId) ||
+    state.claims.some((claim) => claim.id === objectId) ||
+    state.pendingHumanRequest?.id === objectId
+  );
 }
 
 export function applyWorkspaceAction(
@@ -39,14 +89,17 @@ export function applyWorkspaceAction(
       ...state,
       events: [
         ...state.events,
-        createWorkspaceEvent({
-          actor,
-          actionType: "ACTION_REJECTED",
-          summary: permission.reason ?? `Action ${action.type} was rejected.`,
-          before: state,
-          after: state,
-          reason: action.reason,
-        }),
+        createWorkspaceEvent(
+          {
+            actor,
+            actionType: "ACTION_REJECTED",
+            summary: permission.reason ?? `Action ${action.type} was rejected.`,
+            before: state,
+            after: state,
+            reason: action.reason,
+          },
+          state.events.length,
+        ),
       ],
     };
   }
@@ -65,7 +118,7 @@ export function applyWorkspaceAction(
 
     case "ADD_SOURCE": {
       const source: Source = {
-        id: createId("source"),
+        id: createId("source", state),
         title: action.payload.title,
         publisher: action.payload.publisher,
         url: action.payload.url,
@@ -89,9 +142,61 @@ export function applyWorkspaceAction(
       );
     }
 
+    case "EDIT_SOURCE": {
+      const before = state.sources.find(
+        (source) => source.id === action.payload.sourceId,
+      );
+      if (!before) {
+        return rejectMissingObject(
+          state,
+          actor,
+          action.type,
+          action.payload.sourceId,
+          action.reason,
+        );
+      }
+
+      const after: Source = {
+        ...before,
+        title: action.payload.title,
+        publisher: action.payload.publisher,
+        url: action.payload.url,
+        publishedAt: action.payload.publishedAt,
+        summary: action.payload.summary,
+      };
+      const next = {
+        ...state,
+        sources: state.sources.map((source) =>
+          source.id === after.id ? after : source,
+        ),
+      };
+
+      return appendEvent(
+        next,
+        actor,
+        action.type,
+        `Edited source: ${after.title}`,
+        "source",
+        after.id,
+        action.reason,
+        before,
+        after,
+      );
+    }
+
     case "ADD_EVIDENCE": {
+      if (!hasSource(state, action.payload.sourceId)) {
+        return rejectMissingObject(
+          state,
+          actor,
+          action.type,
+          action.payload.sourceId,
+          action.reason,
+        );
+      }
+
       const evidence: Evidence = {
-        id: createId("evidence"),
+        id: createId("evidence", state),
         sourceId: action.payload.sourceId,
         quoteOrFinding: action.payload.quoteOrFinding,
         relevance: action.payload.relevance,
@@ -113,10 +218,75 @@ export function applyWorkspaceAction(
       );
     }
 
+    case "EDIT_EVIDENCE": {
+      const before = state.evidence.find(
+        (evidence) => evidence.id === action.payload.evidenceId,
+      );
+      if (!before) {
+        return rejectMissingObject(
+          state,
+          actor,
+          action.type,
+          action.payload.evidenceId,
+          action.reason,
+        );
+      }
+
+      const after: Evidence = {
+        ...before,
+        quoteOrFinding: action.payload.quoteOrFinding,
+        relevance: action.payload.relevance,
+      };
+      const next = {
+        ...state,
+        evidence: state.evidence.map((evidence) =>
+          evidence.id === after.id ? after : evidence,
+        ),
+      };
+
+      return appendEvent(
+        next,
+        actor,
+        action.type,
+        "Edited evidence.",
+        "evidence",
+        after.id,
+        action.reason,
+        before,
+        after,
+      );
+    }
+
     case "ADD_NOTE": {
+      const missingSourceId = findMissingId(action.payload.sourceIds, (id) =>
+        hasSource(state, id),
+      );
+      if (missingSourceId) {
+        return rejectMissingObject(
+          state,
+          actor,
+          action.type,
+          missingSourceId,
+          action.reason,
+        );
+      }
+
+      const missingEvidenceId = findMissingId(action.payload.evidenceIds, (id) =>
+        hasEvidence(state, id),
+      );
+      if (missingEvidenceId) {
+        return rejectMissingObject(
+          state,
+          actor,
+          action.type,
+          missingEvidenceId,
+          action.reason,
+        );
+      }
+
       const timestamp = now();
       const note: ResearchNote = {
-        id: createId("note"),
+        id: createId("note", state),
         content: action.payload.content,
         sourceIds: action.payload.sourceIds,
         evidenceIds: action.payload.evidenceIds,
@@ -153,6 +323,32 @@ export function applyWorkspaceAction(
         );
       }
 
+      const missingSourceId = findMissingId(action.payload.sourceIds, (id) =>
+        hasSource(state, id),
+      );
+      if (missingSourceId) {
+        return rejectMissingObject(
+          state,
+          actor,
+          action.type,
+          missingSourceId,
+          action.reason,
+        );
+      }
+
+      const missingEvidenceId = findMissingId(action.payload.evidenceIds, (id) =>
+        hasEvidence(state, id),
+      );
+      if (missingEvidenceId) {
+        return rejectMissingObject(
+          state,
+          actor,
+          action.type,
+          missingEvidenceId,
+          action.reason,
+        );
+      }
+
       const after: ResearchNote = {
         ...before,
         content: action.payload.content,
@@ -179,9 +375,37 @@ export function applyWorkspaceAction(
     }
 
     case "PROPOSE_CLAIM": {
+      const missingSupportingEvidenceId = findMissingId(
+        action.payload.supportingEvidenceIds,
+        (id) => hasEvidence(state, id),
+      );
+      if (missingSupportingEvidenceId) {
+        return rejectMissingObject(
+          state,
+          actor,
+          action.type,
+          missingSupportingEvidenceId,
+          action.reason,
+        );
+      }
+
+      const missingCounterEvidenceId = findMissingId(
+        action.payload.counterEvidenceIds,
+        (id) => hasEvidence(state, id),
+      );
+      if (missingCounterEvidenceId) {
+        return rejectMissingObject(
+          state,
+          actor,
+          action.type,
+          missingCounterEvidenceId,
+          action.reason,
+        );
+      }
+
       const timestamp = now();
       const claim: Claim = {
-        id: createId("claim"),
+        id: createId("claim", state),
         statement: action.payload.statement,
         reasoning: action.payload.reasoning,
         supportingEvidenceIds: action.payload.supportingEvidenceIds,
@@ -217,6 +441,34 @@ export function applyWorkspaceAction(
           actor,
           action.type,
           action.payload.claimId,
+          action.reason,
+        );
+      }
+
+      const missingSupportingEvidenceId = findMissingId(
+        action.payload.supportingEvidenceIds,
+        (id) => hasEvidence(state, id),
+      );
+      if (missingSupportingEvidenceId) {
+        return rejectMissingObject(
+          state,
+          actor,
+          action.type,
+          missingSupportingEvidenceId,
+          action.reason,
+        );
+      }
+
+      const missingCounterEvidenceId = findMissingId(
+        action.payload.counterEvidenceIds,
+        (id) => hasEvidence(state, id),
+      );
+      if (missingCounterEvidenceId) {
+        return rejectMissingObject(
+          state,
+          actor,
+          action.type,
+          missingCounterEvidenceId,
           action.reason,
         );
       }
@@ -269,6 +521,20 @@ export function applyWorkspaceAction(
         );
       }
 
+      const missingCounterEvidenceId = findMissingId(
+        action.payload.counterEvidenceIds,
+        (id) => hasEvidence(state, id),
+      );
+      if (missingCounterEvidenceId) {
+        return rejectMissingObject(
+          state,
+          actor,
+          action.type,
+          missingCounterEvidenceId,
+          action.reason,
+        );
+      }
+
       const after: Claim = {
         ...before,
         counterEvidenceIds: action.payload.counterEvidenceIds,
@@ -297,8 +563,22 @@ export function applyWorkspaceAction(
     }
 
     case "REQUEST_HUMAN_INPUT": {
+      const missingRelatedObjectId = findMissingId(
+        action.payload.relatedObjectIds,
+        (id) => hasWorkspaceObject(state, id),
+      );
+      if (missingRelatedObjectId) {
+        return rejectMissingObject(
+          state,
+          actor,
+          action.type,
+          missingRelatedObjectId,
+          action.reason,
+        );
+      }
+
       const request: HumanInputRequest = {
-        id: createId("request"),
+        id: createId("request", state),
         question: action.payload.question,
         relatedObjectIds: action.payload.relatedObjectIds,
         status: "open",
@@ -430,16 +710,19 @@ function appendEvent(
     ...state,
     events: [
       ...state.events,
-      createWorkspaceEvent({
-        actor,
-        actionType,
-        objectType,
-        objectId,
-        summary,
-        before,
-        after,
-        reason,
-      }),
+      createWorkspaceEvent(
+        {
+          actor,
+          actionType,
+          objectType,
+          objectId,
+          summary,
+          before,
+          after,
+          reason,
+        },
+        state.events.length,
+      ),
     ],
   };
 }
@@ -455,15 +738,18 @@ function rejectMissingObject(
     ...state,
     events: [
       ...state.events,
-      createWorkspaceEvent({
-        actor,
-        actionType: "ACTION_REJECTED",
-        objectId,
-        summary: `${actionType} rejected because object ${objectId} was not found.`,
-        before: state,
-        after: state,
-        reason,
-      }),
+      createWorkspaceEvent(
+        {
+          actor,
+          actionType: "ACTION_REJECTED",
+          objectId,
+          summary: `${actionType} rejected because object ${objectId} was not found.`,
+          before: state,
+          after: state,
+          reason,
+        },
+        state.events.length,
+      ),
     ],
   };
 }

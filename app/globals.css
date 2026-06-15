@@ -1,12 +1,137 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   color-scheme: light;
 }
 
-* {
-  box-sizing: border-box;
+@layer base {
+  body {
+    @apply m-0 bg-surface text-text-primary antialiased;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      "Helvetica Neue", Arial, sans-serif;
+  }
+
+  h1 {
+    @apply text-2xl font-semibold tracking-tight;
+  }
+
+  h2 {
+    @apply text-lg font-semibold tracking-tight;
+  }
+
+  h3 {
+    @apply text-sm font-semibold tracking-tight text-text-secondary uppercase;
+  }
 }
 
-body {
-  margin: 0;
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .panel-title {
+    @apply text-xs font-semibold uppercase tracking-wider text-text-muted mb-2;
+  }
+
+  .card {
+    @apply rounded-lg border border-surface-border bg-surface p-3;
+  }
+
+  .card-sm {
+    @apply rounded-md border border-surface-border bg-surface p-2;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150;
+  }
+
+  .btn-primary {
+    @apply btn bg-accent-blue text-white hover:bg-blue-700 active:bg-blue-800;
+  }
+
+  .btn-secondary {
+    @apply btn border border-surface-border bg-surface text-text-primary hover:bg-surface-secondary active:bg-surface-border;
+  }
+
+  .btn-ghost {
+    @apply btn text-text-secondary hover:bg-surface-secondary active:bg-surface-border;
+  }
+
+  .btn-danger {
+    @apply btn border border-accent-red/30 text-accent-red hover:bg-red-50;
+  }
+
+  .btn-disabled {
+    @apply btn cursor-not-allowed opacity-50;
+  }
+
+  .input {
+    @apply w-full rounded-md border border-surface-border bg-surface px-3 py-1.5 text-sm outline-none transition-colors placeholder:text-text-muted focus:border-accent-blue focus:ring-1 focus:ring-accent-blue/30;
+  }
+
+  .label {
+    @apply block text-xs font-medium text-text-secondary mb-1;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-2xs font-medium;
+  }
+
+  .badge-idle {
+    @apply badge bg-gray-100 text-text-secondary;
+  }
+
+  .badge-working {
+    @apply badge bg-blue-50 text-accent-blue;
+  }
+
+  .badge-waiting {
+    @apply badge bg-amber-50 text-accent-amber;
+  }
+
+  .badge-blocked {
+    @apply badge bg-red-50 text-accent-red;
+  }
+
+  .badge-completed {
+    @apply badge bg-green-50 text-accent-green;
+  }
+
+  .status-ai_proposed {
+    @apply badge bg-purple-50 text-accent-purple;
+  }
+
+  .status-human_confirmed {
+    @apply badge bg-green-50 text-accent-green;
+  }
+
+  .status-human_revised {
+    @apply badge bg-blue-50 text-accent-blue;
+  }
+
+  .status-contested {
+    @apply badge bg-red-50 text-accent-red;
+  }
+
+  .status-evidence_insufficient {
+    @apply badge bg-amber-50 text-accent-amber;
+  }
+
+  .status-final {
+    @apply badge bg-gray-900 text-white;
+  }
+
+  .actor-badge {
+    @apply inline-flex items-center rounded px-1.5 py-0.5 text-2xs font-medium uppercase tracking-wider;
+  }
+
+  .actor-human {
+    @apply actor-badge bg-green-100 text-accent-green;
+  }
+
+  .actor-agent {
+    @apply actor-badge bg-purple-100 text-accent-purple;
+  }
+
+  .actor-system {
+    @apply actor-badge bg-gray-100 text-text-secondary;
+  }
 }
