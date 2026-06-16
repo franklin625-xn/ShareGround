@@ -96,7 +96,7 @@ If Franklin does not provide materials in time, use a small stable local demo co
 GitHub repository:
 
 ```text
-https://github.com/franklin625-xn/ShareGround
+https://github.com/franklin625-xn/SharedGround
 ```
 
 Local project path:
@@ -104,4 +104,3 @@ Local project path:
 ```text
 /Users/franklin/Documents/ShareGround/ShareGround_project
 ```
-
