@@ -133,14 +133,109 @@ describe("Evaluation page", () => {
       workspace: workspace(),
       agentError: null,
       agentMode: "idle",
+      hasHydrated: true,
     });
   });
 
-  it("reads the current Zustand workspace and calls runEvaluation once", async () => {
+  it("renders a stable loading state before persisted workspace hydration", async () => {
     const { default: EvaluationPage } = await import("@/app/evaluation/page");
     const { runEvaluation } = await import("@/eval/run-evaluation");
 
+    vi.mocked(runEvaluation).mockClear();
+    useWorkspaceStore.setState({
+      workspace: createEmptyWorkspaceState({
+        title: "New Research Task",
+        question: "",
+        scope: "",
+      }),
+      agentError: null,
+      agentMode: "idle",
+      hasHydrated: false,
+    } as Partial<ReturnType<typeof useWorkspaceStore.getState>>);
+
     const html = renderToStaticMarkup(React.createElement(EvaluationPage));
+
+    expect(html).toContain("Loading evaluation");
+    expect(html).not.toContain("New Research Task");
+    expect(html).not.toContain("EU industrial policy and Chinese investment");
+    expect(runEvaluation).not.toHaveBeenCalled();
+  });
+
+  it("keeps the same loading DOM before React mount even if the store is hydrated", async () => {
+    const { default: EvaluationPage } = await import("@/app/evaluation/page");
+    const { runEvaluation } = await import("@/eval/run-evaluation");
+
+    vi.mocked(runEvaluation).mockClear();
+    useWorkspaceStore.setState({
+      workspace: workspace(),
+      agentError: null,
+      agentMode: "idle",
+      hasHydrated: true,
+    } as Partial<ReturnType<typeof useWorkspaceStore.getState>>);
+
+    const html = renderToStaticMarkup(React.createElement(EvaluationPage));
+
+    expect(html).toContain("Loading evaluation");
+    expect(html).not.toContain("EU industrial policy and Chinese investment");
+    expect(runEvaluation).not.toHaveBeenCalled();
+  });
+
+  it("uses identical first-frame markup for default and persisted workspaces before mount", async () => {
+    const { default: EvaluationPage } = await import("@/app/evaluation/page");
+
+    useWorkspaceStore.setState({
+      workspace: createEmptyWorkspaceState({
+        title: "New Research Task",
+        question: "",
+        scope: "",
+      }),
+      agentError: null,
+      agentMode: "idle",
+      hasHydrated: false,
+    } as Partial<ReturnType<typeof useWorkspaceStore.getState>>);
+    const defaultHtml = renderToStaticMarkup(
+      React.createElement(EvaluationPage),
+    );
+
+    useWorkspaceStore.setState({
+      workspace: workspace(),
+      agentError: null,
+      agentMode: "idle",
+      hasHydrated: true,
+    } as Partial<ReturnType<typeof useWorkspaceStore.getState>>);
+    const persistedHtml = renderToStaticMarkup(
+      React.createElement(EvaluationPage),
+    );
+
+    expect(persistedHtml).toBe(defaultHtml);
+    expect(persistedHtml).toContain("Loading evaluation");
+  });
+
+  it("renders the persisted task title after workspace hydration", async () => {
+    const { EvaluationPageContent } = await import("@/components/evaluation/evaluation-page-content");
+
+    useWorkspaceStore.setState({
+      workspace: workspace(),
+      agentError: null,
+      agentMode: "idle",
+      hasHydrated: true,
+    } as Partial<ReturnType<typeof useWorkspaceStore.getState>>);
+
+    const html = renderToStaticMarkup(
+      React.createElement(EvaluationPageContent, { mounted: true }),
+    );
+
+    expect(html).toContain("EU industrial policy and Chinese investment");
+    expect(html).not.toContain("Loading evaluation");
+  });
+
+  it("reads the current Zustand workspace and calls runEvaluation once", async () => {
+    const { EvaluationPageContent } = await import("@/components/evaluation/evaluation-page-content");
+    const { runEvaluation } = await import("@/eval/run-evaluation");
+
+    const html = renderToStaticMarkup(
+      React.createElement(EvaluationPageContent, { mounted: true }),
+    );
 
     expect(runEvaluation).toHaveBeenCalledWith(workspace());
     expect(html).toContain("Collaboration Evaluation");
@@ -148,9 +243,11 @@ describe("Evaluation page", () => {
   });
 
   it("renders outcome, process, control, and traceability metrics", async () => {
-    const { default: EvaluationPage } = await import("@/app/evaluation/page");
+    const { EvaluationPageContent } = await import("@/components/evaluation/evaluation-page-content");
 
-    const html = renderToStaticMarkup(React.createElement(EvaluationPage));
+    const html = renderToStaticMarkup(
+      React.createElement(EvaluationPageContent, { mounted: true }),
+    );
 
     expect(html).toContain("Outcome");
     expect(html).toContain("Grounded final claims");

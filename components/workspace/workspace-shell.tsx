@@ -1,22 +1,26 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useWorkspaceStore } from "@/store/workspace-store";
+import {
+  getPersistenceErrorEventName,
+  useWorkspaceStore,
+  type AgentMode,
+} from "@/store/workspace-store";
 import { SourcesPanel } from "@/components/workspace/sources-panel";
 import { NotesPanel } from "@/components/workspace/notes-panel";
 import { ClaimsPanel } from "@/components/workspace/claims-panel";
 import { BriefEditor } from "@/components/workspace/brief-editor";
 import { ActivityLog } from "@/components/workspace/activity-log";
 import { MessagesPanel } from "@/components/workspace/messages-panel";
-import { AgentControlBar } from "@/components/agent/agent-control-bar";
+import { AgentControlBarView } from "@/components/agent/agent-control-bar";
 import { AgentStatus } from "@/components/agent/agent-status";
 import { HumanInputRequest } from "@/components/agent/human-input-request";
 import { buildFinishTaskAction } from "@/core/human-actions";
 import { briefIsStale } from "@/core/brief-stale";
 import type { WorkspaceAction } from "@/core/schemas";
+import type { WorkspaceState } from "@/core/types";
 import { runEvaluation } from "@/eval/run-evaluation";
 import { buildDebugBundle } from "@/core/debug-bundle";
-import { getPersistenceErrorEventName } from "@/store/workspace-store";
 
 type RightTab = "activity" | "messages";
 
@@ -25,9 +29,10 @@ export function WorkspaceShell() {
   const reset = useWorkspaceStore((s) => s.reset);
   const applyAction = useWorkspaceStore((s) => s.applyAction);
   const startAgent = useWorkspaceStore((s) => s.startAgent);
+  const pauseAgent = useWorkspaceStore((s) => s.pauseAgent);
+  const resumeAgent = useWorkspaceStore((s) => s.resumeAgent);
   const agentMode = useWorkspaceStore((s) => s.agentMode);
   const agentError = useWorkspaceStore((s) => s.agentError);
-  const [rightTab, setRightTab] = useState<RightTab>("activity");
   const [persistenceError, setPersistenceError] = useState<string | null>(null);
   const applyHumanAction = (action: WorkspaceAction) => {
     applyAction(action, "human");
@@ -76,10 +81,66 @@ export function WorkspaceShell() {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
+    <WorkspaceShellView
+      workspace={workspace}
+      agentMode={agentMode}
+      agentError={agentError}
+      persistenceError={persistenceError}
+      onApplyHumanAction={applyHumanAction}
+      onSendMessageAndRun={sendMessageAndRun}
+      onStartAgent={startAgent}
+      onPauseAgent={pauseAgent}
+      onResumeAgent={resumeAgent}
+      onReset={() => {
+        if (window.confirm("Reset workspace? All progress will be lost.")) {
+          reset();
+        }
+      }}
+      onExportDebugBundle={exportDebugBundle}
+      onDismissPersistenceError={() => setPersistenceError(null)}
+    />
+  );
+}
+
+export function WorkspaceShellView({
+  workspace,
+  agentMode,
+  agentError,
+  persistenceError,
+  onApplyHumanAction,
+  onSendMessageAndRun,
+  onStartAgent,
+  onPauseAgent,
+  onResumeAgent,
+  onReset,
+  onExportDebugBundle,
+  onDismissPersistenceError,
+}: {
+  workspace: WorkspaceState;
+  agentMode: AgentMode;
+  agentError: string | null;
+  persistenceError: string | null;
+  onApplyHumanAction: (action: WorkspaceAction) => void;
+  onSendMessageAndRun: (action: WorkspaceAction) => void;
+  onStartAgent: () => void;
+  onPauseAgent: () => void;
+  onResumeAgent: () => void;
+  onReset: () => void;
+  onExportDebugBundle: () => void;
+  onDismissPersistenceError: () => void;
+}) {
+  const [rightTab, setRightTab] = useState<RightTab>("activity");
+  const hasOpenHumanRequest = workspace.pendingHumanRequest?.status === "open";
+
+  return (
+    <div
+      className={`flex h-screen flex-col overflow-hidden ${
+        hasOpenHumanRequest ? "pb-48" : ""
+      }`}
+    >
       {/* Top Bar */}
-      <header className="flex items-center justify-between border-b border-surface-border px-4 py-2">
-        <div className="flex items-center gap-3 min-w-0">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-surface-border px-4 py-2">
+        <div className="flex min-w-[220px] flex-1 items-center gap-3">
           <a
             href="/"
             className="text-xs font-semibold uppercase tracking-wider text-text-muted hover:text-text-primary"
@@ -92,12 +153,23 @@ export function WorkspaceShell() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
           <AgentStatus status={workspace.agentControl.status} />
-          <AgentControlBar />
+          <AgentControlBarView
+            status={workspace.agentControl.status}
+            completed={workspace.completed}
+            agentMode={agentMode}
+            error={agentError}
+            currentGoal={workspace.agentControl.currentGoal}
+            latestAction={workspace.agentControl.latestActionSummary}
+            pendingHumanRequest={workspace.pendingHumanRequest}
+            onStartAgent={onStartAgent}
+            onPauseAgent={onPauseAgent}
+            onResumeAgent={onResumeAgent}
+          />
           <button
             type="button"
-            onClick={() => applyHumanAction(buildFinishTaskAction())}
+            onClick={() => onApplyHumanAction(buildFinishTaskAction())}
             className={
               workspace.completed
                 ? "btn-disabled text-xs"
@@ -112,17 +184,13 @@ export function WorkspaceShell() {
           </a>
           <button
             type="button"
-            onClick={exportDebugBundle}
+            onClick={onExportDebugBundle}
             className="btn-ghost text-xs"
           >
             Export Debug Bundle
           </button>
           <button
-            onClick={() => {
-              if (window.confirm("Reset workspace? All progress will be lost.")) {
-                reset();
-              }
-            }}
+            onClick={onReset}
             className="btn-ghost text-xs"
           >
             Reset
@@ -160,14 +228,14 @@ export function WorkspaceShell() {
             <button
               type="button"
               className="btn-ghost px-2 py-1 text-2xs"
-              onClick={exportDebugBundle}
+              onClick={onExportDebugBundle}
             >
               Export Debug Bundle
             </button>
             <button
               type="button"
               className="btn-ghost px-2 py-1 text-2xs"
-              onClick={() => setPersistenceError(null)}
+              onClick={onDismissPersistenceError}
             >
               Dismiss
             </button>
@@ -180,7 +248,7 @@ export function WorkspaceShell() {
         workspace.pendingHumanRequest.status === "open" && (
           <HumanInputRequest
             request={workspace.pendingHumanRequest}
-            onAction={applyHumanAction}
+            onAction={onApplyHumanAction}
           />
         )}
 
@@ -192,13 +260,13 @@ export function WorkspaceShell() {
             <SourcesPanel
               sources={workspace.sources}
               evidence={workspace.evidence}
-              onAction={applyHumanAction}
+              onAction={onApplyHumanAction}
             />
             <NotesPanel
               notes={workspace.notes}
               sources={workspace.sources}
               evidence={workspace.evidence}
-              onAction={applyHumanAction}
+              onAction={onApplyHumanAction}
             />
           </div>
         </aside>
@@ -210,7 +278,7 @@ export function WorkspaceShell() {
               claims={workspace.claims}
               evidence={workspace.evidence}
               briefDerivation={workspace.brief.derivation}
-              onAction={applyHumanAction}
+              onAction={onApplyHumanAction}
             />
             <BriefEditor
               markdown={workspace.brief.markdown}
@@ -219,7 +287,7 @@ export function WorkspaceShell() {
               isStale={briefIsStale(workspace)}
               derivation={workspace.brief.derivation}
               claims={workspace.claims}
-              onAction={applyHumanAction}
+              onAction={onApplyHumanAction}
             />
           </div>
         </main>
@@ -248,8 +316,8 @@ export function WorkspaceShell() {
             ) : (
               <MessagesPanel
                 messages={workspace.messages ?? []}
-                onAction={applyHumanAction}
-                onSendAndRun={sendMessageAndRun}
+                onAction={onApplyHumanAction}
+                onSendAndRun={onSendMessageAndRun}
               />
             )}
           </div>

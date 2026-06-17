@@ -200,18 +200,12 @@ export function runMockAgent(context: AgentContext): AgentTurn {
 function buildBriefAction(context: AgentContext): AgentAction {
   const answer = context.answeredHumanRequest?.answer ?? "Focus on EV batteries.";
 
-  // Snapshot reviewed claim versions and evidence versions for derivation
+  // Collect reviewed claim IDs and evidence IDs for derivation snapshot
   const reviewedClaims = context.allClaims.filter(
     (c) => ["human_confirmed", "human_revised", "final"].includes(c.status),
   );
-  const claimVersions: Record<string, number> = {};
-  for (const c of reviewedClaims) {
-    claimVersions[c.id] = c.version;
-  }
-  const evidenceVersions: Record<string, number> = {};
-  for (const e of context.evidence) {
-    evidenceVersions[e.id] = e.version;
-  }
+  const referencedClaimIds = reviewedClaims.map((c) => c.id);
+  const referencedEvidenceIds = context.evidence.map((e) => e.id);
   const reviewEventIds = context.humanEvents
     .filter((e) => e.objectType === "claim")
     .slice(-3)
@@ -240,9 +234,11 @@ EU industrial policy is reshaping Chinese investment in Europe by making localiz
 
 The final version should keep the human-selected emphasis visible and treat the agent claims as provisional until reviewed.`,
       expectedVersion: context.briefVersion,
+      referencedClaimIds,
+      referencedEvidenceIds,
       derivation: {
-        claimVersions,
-        evidenceVersions,
+        claimVersions: Object.fromEntries(reviewedClaims.map((c) => [c.id, c.version])),
+        evidenceVersions: Object.fromEntries(context.evidence.map((e) => [e.id, e.version])),
         generatedFromEventIds: reviewEventIds,
       },
     },

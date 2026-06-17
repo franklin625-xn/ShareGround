@@ -55,6 +55,8 @@ export interface WorkspaceStore {
   workspace: WorkspaceState;
   agentError: string | null;
   agentMode: AgentMode;
+  hasHydrated: boolean;
+  setHasHydrated: (hasHydrated: boolean) => void;
   loadDemo: () => void;
   reset: () => void;
   applyAction: (action: WorkspaceAction, actor: Actor) => void;
@@ -402,6 +404,11 @@ export const useWorkspaceStore =
         workspace: buildInitialWorkspace(),
         agentError: null,
         agentMode: "idle" as AgentMode,
+        hasHydrated: false,
+
+        setHasHydrated: (hasHydrated: boolean) => {
+          set({ hasHydrated });
+        },
 
         loadDemo: () => {
           clearTransientRuntime();
@@ -597,6 +604,9 @@ export const useWorkspaceStore =
           }
 
           return raw as Record<string, unknown>;
+        },
+        onRehydrateStorage: () => (state) => {
+          state?.setHasHydrated(true);
         },
       },
     ),

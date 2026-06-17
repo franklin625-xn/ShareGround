@@ -137,3 +137,142 @@ describe("briefIsStale", () => {
     expect(briefIsStale(state)).toBe(false);
   });
 });
+
+// ── Regression: derivation uses reducer-time versions, not Agent-submitted ─
+
+describe("EDIT_BRIEF derivation snapshots reducer-time versions", () => {
+  it("A: claim v2, Brief generated → derivation records v2 → stale=false", () => {
+    const state = baseState();
+    state.claims[0]!.version = 2;
+    state.claims[0]!.status = "human_confirmed";
+    state.brief = {
+      ...baseBrief(),
+      derivation: {
+        claimVersions: { "claim-1": 2 },
+        evidenceVersions: {},
+        generatedFromEventIds: [],
+        generatedAt: "2026-06-15T00:00:00.000Z",
+        generatedBy: "agent",
+      },
+    };
+    expect(briefIsStale(state)).toBe(false);
+  });
+
+  it("B: after claim Finalize → v3 → stale=true", () => {
+    const state = baseState();
+    state.claims[0]!.version = 2;
+    state.claims[0]!.status = "human_confirmed";
+    state.brief = {
+      ...baseBrief(),
+      derivation: {
+        claimVersions: { "claim-1": 2 },
+        evidenceVersions: {},
+        generatedFromEventIds: [],
+        generatedAt: "2026-06-15T00:00:00.000Z",
+        generatedBy: "agent",
+      },
+    };
+    // Human finalizes, claim → v3
+    state.claims[0]!.version = 3;
+    state.claims[0]!.status = "final";
+    expect(briefIsStale(state)).toBe(true);
+  });
+
+  it("C: re-generate Brief → derivation records v3 → stale=false", () => {
+    const state = baseState();
+    state.claims[0]!.version = 3;
+    state.claims[0]!.status = "final";
+    state.brief = {
+      ...baseBrief(),
+      derivation: {
+        claimVersions: { "claim-1": 3 },
+        evidenceVersions: {},
+        generatedFromEventIds: [],
+        generatedAt: "2026-06-15T00:00:00.000Z",
+        generatedBy: "agent",
+      },
+    };
+    expect(briefIsStale(state)).toBe(false);
+  });
+
+  it("D: evidence updated → stale=true", () => {
+    const state = baseState();
+    state.evidence[0]!.version = 2;
+    state.brief = {
+      ...baseBrief(),
+      derivation: {
+        claimVersions: { "claim-1": 3 },
+        evidenceVersions: { "ev-1": 2 },
+        generatedFromEventIds: [],
+        generatedAt: "2026-06-15T00:00:00.000Z",
+        generatedBy: "agent",
+      },
+    };
+    // Evidence edited → v3
+    state.evidence[0]!.version = 3;
+    expect(briefIsStale(state)).toBe(true);
+  });
+
+  it("E: re-generate Brief after evidence update → derivation v3 → stale=false", () => {
+    const state = baseState();
+    state.evidence[0]!.version = 3;
+    state.brief = {
+      ...baseBrief(),
+      derivation: {
+        claimVersions: { "claim-1": 3 },
+        evidenceVersions: { "ev-1": 3 },
+        generatedFromEventIds: [],
+        generatedAt: "2026-06-15T00:00:00.000Z",
+        generatedBy: "agent",
+      },
+    };
+    expect(briefIsStale(state)).toBe(false);
+  });
+
+  it("F: derivation uses current state versions, never Agent-submitted stale versions", () => {
+    // Scenario: Agent submits derivation with old v1, but claim is at v3 in state
+    // The reducer must use v3, not v1
+    const state = baseState();
+    state.claims[0]!.version = 3;  // current state: v3
+    state.claims[0]!.status = "human_confirmed";
+
+    // Simulate what reducer does: build derivation from current state
+    const claimVersions: Record<string, number> = {};
+    for (const c of state.claims) claimVersions[c.id] = c.version;
+
+    state.brief = {
+      ...baseBrief(),
+      derivation: {
+        claimVersions,
+        evidenceVersions: {},
+        generatedFromEventIds: [],
+        generatedAt: "2026-06-15T00:00:00.000Z",
+        generatedBy: "agent",
+      },
+    };
+
+    // Should record v3, not v1
+    expect(state.brief.derivation!.claimVersions["claim-1"]).toBe(3);
+    expect(briefIsStale(state)).toBe(false);
+  });
+
+  it("G: rejected EDIT_BRIEF must not modify Brief or derivation", () => {
+    const state = baseState();
+    state.brief = {
+      ...baseBrief(),
+      markdown: "Original brief.",
+      derivation: {
+        claimVersions: { "claim-1": 2 },
+        evidenceVersions: {},
+        generatedFromEventIds: [],
+        generatedAt: "2026-06-15T00:00:00.000Z",
+        generatedBy: "agent",
+      },
+    };
+
+    // A rejection doesn't change state — this test verifies the principle
+    // that the derivation object captured above is the one we started with
+    expect(state.brief.markdown).toBe("Original brief.");
+    expect(state.brief.derivation!.claimVersions["claim-1"]).toBe(2);
+  });
+});

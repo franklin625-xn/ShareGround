@@ -167,6 +167,9 @@ export const workspaceActionSchema = z.discriminatedUnion("type", [
         evidenceVersions: z.record(z.string(), z.number()),
         generatedFromEventIds: z.array(z.string()),
       }).optional(),
+      /** Agent submits which IDs it referenced; reducer snapshots current versions at apply time. */
+      referencedClaimIds: z.array(z.string()).optional(),
+      referencedEvidenceIds: z.array(z.string()).optional(),
     }),
     reason: reasonSchema,
     actionId: actionIdSchema,

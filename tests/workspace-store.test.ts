@@ -44,6 +44,17 @@ describe("workspace factory — reset / new task", () => {
   });
 });
 
+describe("workspace store hydration flag", () => {
+  it("tracks whether persisted workspace hydration has completed", () => {
+    useWorkspaceStore.setState({ hasHydrated: false });
+    expect(useWorkspaceStore.getState().hasHydrated).toBe(false);
+
+    useWorkspaceStore.getState().setHasHydrated(true);
+
+    expect(useWorkspaceStore.getState().hasHydrated).toBe(true);
+  });
+});
+
 describe("applyAction preserves existing state and writes events", () => {
   beforeEach(() => {
     resetEventCounterForTests();

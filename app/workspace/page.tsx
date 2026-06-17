@@ -2,9 +2,22 @@
 
 import { useWorkspaceStore } from "@/store/workspace-store";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
+import {
+  PageHydrationLoading,
+  useClientMounted,
+} from "@/components/hydration/client-mounted-gate";
 
 export default function WorkspacePage() {
-  const workspace = useWorkspaceStore((s) => s.workspace);
+  const mounted = useClientMounted();
+  const storeHasHydrated = useWorkspaceStore((s) => s.hasHydrated);
+  const hasHydrated =
+    useWorkspaceStore.getState().hasHydrated || storeHasHydrated;
+
+  if (!mounted || !hasHydrated) {
+    return <PageHydrationLoading label="Loading workspace..." />;
+  }
+
+  const workspace = useWorkspaceStore.getState().workspace;
 
   if (!workspace) {
     return (

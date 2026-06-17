@@ -57,7 +57,7 @@ Payload: { waitingFor: string }
 
 ### 12. EDIT_BRIEF
 Edit the final brief markdown. The brief is the main deliverable document.
-Payload: { markdown: string, expectedVersion: number, derivation: { claimVersions: Record<string, number>, evidenceVersions: Record<string, number>, generatedFromEventIds: string[] } }
+Payload: { markdown: string, referencedClaimIds?: string[], referencedEvidenceIds?: string[], derivation?: { claimVersions, evidenceVersions, generatedFromEventIds } }
 
 ### 13. SEARCH_SOURCE
 Request a source search. Does not create new objects.

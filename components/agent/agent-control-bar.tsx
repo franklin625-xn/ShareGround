@@ -3,7 +3,11 @@
 import React from "react";
 import { useWorkspaceStore } from "@/store/workspace-store";
 import type { AgentMode } from "@/store/workspace-store";
-import type { AgentRunStatus } from "@/core/types";
+import type { AgentRunStatus, HumanInputRequest } from "@/core/types";
+import {
+  focusHumanRequestComposer,
+  HumanRequestShortcutButton,
+} from "@/components/agent/human-input-request";
 
 function ModeBadge({ mode }: { mode: AgentMode }) {
   if (mode === "idle") return null;
@@ -19,7 +23,13 @@ function ModeBadge({ mode }: { mode: AgentMode }) {
   return <span className={c.className}>{c.label}</span>;
 }
 
-function StatusBadge({ status }: { status: AgentRunStatus }) {
+function StatusBadge({
+  status,
+  onClick,
+}: {
+  status: AgentRunStatus;
+  onClick?: () => void;
+}) {
   const config: Record<AgentRunStatus, { label: string; className: string }> = {
     idle: { label: "Idle", className: "badge-idle" },
     running: { label: "Running", className: "badge-working" },
@@ -31,6 +41,19 @@ function StatusBadge({ status }: { status: AgentRunStatus }) {
   };
 
   const c = config[status] ?? config.idle;
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        className={c.className}
+        title={`Agent status: ${c.label}. Focus pending human request.`}
+        onClick={onClick}
+      >
+        {c.label}
+      </button>
+    );
+  }
+
   return (
     <span className={c.className} title={`Agent status: ${c.label}`}>
       {c.label}
@@ -38,34 +61,50 @@ function StatusBadge({ status }: { status: AgentRunStatus }) {
   );
 }
 
-export function AgentControlBar() {
-  const startAgent = useWorkspaceStore((s) => s.startAgent);
-  const pauseAgent = useWorkspaceStore((s) => s.pauseAgent);
-  const resumeAgent = useWorkspaceStore((s) => s.resumeAgent);
-  const completed = useWorkspaceStore((s) => s.workspace.completed);
-  const agentControl = useWorkspaceStore((s) => s.workspace.agentControl);
-  const agentMode = useWorkspaceStore((s) => s.agentMode);
-  const error = useWorkspaceStore((s) => s.agentError);
-  const currentGoal = agentControl.currentGoal;
-  const latestAction = agentControl.latestActionSummary;
-  const status = agentControl.status;
+export function AgentControlBarView({
+  status,
+  completed,
+  agentMode,
+  error,
+  currentGoal,
+  latestAction,
+  pendingHumanRequest,
+  onStartAgent,
+  onPauseAgent,
+  onResumeAgent,
+}: {
+  status: AgentRunStatus;
+  completed: boolean;
+  agentMode: AgentMode;
+  error: string | null;
+  currentGoal?: string;
+  latestAction?: string;
+  pendingHumanRequest?: HumanInputRequest;
+  onStartAgent: () => void;
+  onPauseAgent: () => void;
+  onResumeAgent: () => void;
+}) {
+  const hasOpenHumanRequest = pendingHumanRequest?.status === "open";
 
   const isRunning = status === "running" || status === "applying";
   const isPaused = status === "paused";
-  const isWaiting = status === "waiting_for_human";
+  const isWaiting = status === "waiting_for_human" || hasOpenHumanRequest;
   const isCompleted = status === "completed" || completed;
   const isIdle = status === "idle";
 
   return (
     <div className="flex flex-wrap items-center gap-2">
       <ModeBadge mode={agentMode} />
-      <StatusBadge status={status} />
+      <StatusBadge
+        status={hasOpenHumanRequest ? "waiting_for_human" : status}
+        onClick={hasOpenHumanRequest ? focusHumanRequestComposer : undefined}
+      />
 
       {/* Start */}
       {(isIdle || isCompleted) && (
         <button
           type="button"
-          onClick={startAgent}
+          onClick={onStartAgent}
           className="btn-primary text-xs"
           title="Start agent research"
         >
@@ -77,7 +116,7 @@ export function AgentControlBar() {
       {isRunning && (
         <button
           type="button"
-          onClick={pauseAgent}
+          onClick={onPauseAgent}
           className="btn-ghost px-2 py-1 text-xs border border-surface-border"
           title="Pause agent execution"
         >
@@ -89,7 +128,7 @@ export function AgentControlBar() {
       {isPaused && (
         <button
           type="button"
-          onClick={resumeAgent}
+          onClick={onResumeAgent}
           className="btn-primary text-xs"
           title="Resume agent from latest state"
         >
@@ -98,7 +137,9 @@ export function AgentControlBar() {
       )}
 
       {/* Waiting state */}
-      {isWaiting && (
+      {hasOpenHumanRequest && <HumanRequestShortcutButton />}
+
+      {isWaiting && !hasOpenHumanRequest && (
         <span className="text-2xs text-text-muted italic">
           Waiting for your input…
         </span>
@@ -130,5 +171,33 @@ export function AgentControlBar() {
         </span>
       )}
     </div>
+  );
+}
+
+export function AgentControlBar() {
+  const startAgent = useWorkspaceStore((s) => s.startAgent);
+  const pauseAgent = useWorkspaceStore((s) => s.pauseAgent);
+  const resumeAgent = useWorkspaceStore((s) => s.resumeAgent);
+  const completed = useWorkspaceStore((s) => s.workspace.completed);
+  const agentControl = useWorkspaceStore((s) => s.workspace.agentControl);
+  const pendingHumanRequest = useWorkspaceStore(
+    (s) => s.workspace.pendingHumanRequest,
+  );
+  const agentMode = useWorkspaceStore((s) => s.agentMode);
+  const error = useWorkspaceStore((s) => s.agentError);
+
+  return (
+    <AgentControlBarView
+      status={agentControl.status}
+      completed={completed}
+      agentMode={agentMode}
+      error={error}
+      currentGoal={agentControl.currentGoal}
+      latestAction={agentControl.latestActionSummary}
+      pendingHumanRequest={pendingHumanRequest}
+      onStartAgent={startAgent}
+      onPauseAgent={pauseAgent}
+      onResumeAgent={resumeAgent}
+    />
   );
 }

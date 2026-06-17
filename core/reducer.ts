@@ -1014,7 +1014,7 @@ export function applyWorkspaceActionWithResult(
         return { state: next, result: rejected("INVALID_ACTION", { objectType: "brief", objectId: "brief" }) };
       }
 
-      // ── Agent derivation: validate all referenced claims are reviewed ──
+      // ── Agent derivation: validate all referenced claims are reviewed, build from current state ──
       const allowedStatuses: ClaimStatus[] = ["human_confirmed", "human_revised", "final"];
       if (actor === "agent" && action.payload.derivation) {
         for (const [claimId] of Object.entries(action.payload.derivation.claimVersions)) {
@@ -1034,25 +1034,64 @@ export function applyWorkspaceActionWithResult(
         }
       }
 
+      // ── Also validate referencedClaimIds/referencedEvidenceIds if provided ──
+      if (actor === "agent" && action.payload.referencedClaimIds) {
+        for (const claimId of action.payload.referencedClaimIds) {
+          const claim = enriched.claims.find((c) => c.id === claimId);
+          if (!claim) {
+            const next = rejectMissingObject(enriched, actor, action.type, claimId, action.reason, actionId);
+            return { state: next, result: rejected("OBJECT_NOT_FOUND", { objectType: "claim", objectId: claimId }) };
+          }
+          if (!allowedStatuses.includes(claim.status)) {
+            const next = appendRejectionEvent(
+              enriched, actor, action.type, actionId,
+              `Brief cannot cite claim ${claimId} with status ${claim.status} — only human-reviewed claims allowed.`,
+              "brief", "brief", action.reason, "BRIEF_CLAIM_UNREVIEWED",
+            );
+            return { state: next, result: rejected("BRIEF_CLAIM_UNREVIEWED", { objectType: "claim", objectId: claimId }) };
+          }
+        }
+      }
+
       const timestamp = now();
       const newVersion = nextVersion(before);
+
+      // Build derivation from current state versions (NEVER trust Agent-submitted version numbers)
+      let nextDerivation = before.derivation;
+      if (actor === "agent") {
+        const claimIds = action.payload.referencedClaimIds ??
+          (action.payload.derivation ? Object.keys(action.payload.derivation.claimVersions) : []);
+        const evidenceIds = action.payload.referencedEvidenceIds ??
+          (action.payload.derivation ? Object.keys(action.payload.derivation.evidenceVersions) : []);
+
+        const claimVersions: Record<string, number> = {};
+        for (const cid of claimIds) {
+          const c = enriched.claims.find((x) => x.id === cid);
+          if (c) claimVersions[cid] = c.version;
+        }
+        const evidenceVersions: Record<string, number> = {};
+        for (const eid of evidenceIds) {
+          const e = enriched.evidence.find((x) => x.id === eid);
+          if (e) evidenceVersions[eid] = e.version;
+        }
+
+        nextDerivation = {
+          claimVersions,
+          evidenceVersions,
+          generatedFromEventIds: action.payload.derivation?.generatedFromEventIds ??
+            enriched.events.filter((e) => e.actor === "human" && e.objectType === "claim").slice(-3).map((e) => e.id),
+          generatedAt: timestamp,
+          generatedBy: actor,
+        };
+      }
+
       const after = {
         ...before,
         markdown: action.payload.markdown,
         updatedBy: actor,
         updatedAt: timestamp,
         version: newVersion,
-        // Agent sets derivation; Human preserves existing
-        derivation:
-          actor === "agent" && action.payload.derivation
-            ? {
-                claimVersions: action.payload.derivation.claimVersions,
-                evidenceVersions: action.payload.derivation.evidenceVersions,
-                generatedFromEventIds: action.payload.derivation.generatedFromEventIds,
-                generatedAt: timestamp,
-                generatedBy: actor,
-              }
-            : before.derivation,
+        derivation: nextDerivation,
       };
       const next = { ...enriched, brief: after };
       const final = appendEvent(
